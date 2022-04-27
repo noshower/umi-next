@@ -14,7 +14,13 @@ const FAVICON_FILES = [
 ];
 
 function getFaviconFile(p: string): string | undefined {
-  return FAVICON_FILES.find((f) => existsSync(join(p, f)));
+  const iconlist: any = [];
+  FAVICON_FILES.forEach((f) => {
+    if (existsSync(join(p, f))) {
+      iconlist.push(f);
+    }
+  });
+  return iconlist;
 }
 
 export default (api: IApi) => {
@@ -35,11 +41,17 @@ export default (api: IApi) => {
 
   api.addBeforeMiddlewares(() => [
     (req, res, next) => {
-      if (
-        api.appData.faviconFile &&
-        req.path === `/${api.appData.faviconFile}`
-      ) {
-        res.sendFile(join(api.paths.absSrcPath, api.appData.faviconFile));
+      if (api.appData.faviconFile) {
+        var send = false;
+        for (const item of api.appData.faviconFile) {
+          if (req.path === `/${item}`) {
+            send = true;
+            res.sendFile(join(api.paths.absSrcPath, item));
+          }
+        }
+        if (!send) {
+          next();
+        }
       } else {
         next();
       }
@@ -57,8 +69,16 @@ export default (api: IApi) => {
   });
 
   api.modifyHTMLFavicon((memo) => {
-    return api.appData.faviconFile
-      ? `${api.config.publicPath}${api.appData.faviconFile}`
-      : memo;
+    if (api.appData.faviconFile) {
+      if (api.appData.faviconFile instanceof Array) {
+        const ans: String[] = [];
+        api.appData.faviconFile.forEach((e) => {
+          ans.push(`${api.config.publicPath}${e}`);
+        });
+        return ans;
+      }
+    } else {
+      return memo;
+    }
   });
 };
